@@ -35,7 +35,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.nexa.demo"
+        applicationId = "com.carlkho.healthpassport"
         minSdk = 27
         targetSdk = 36
         versionCode = 1

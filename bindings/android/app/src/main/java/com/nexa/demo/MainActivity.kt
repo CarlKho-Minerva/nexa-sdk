@@ -325,33 +325,38 @@ class MainActivity : FragmentActivity() {
         initNexaSdk()
         //
         val sysPrompt = """\
-You are Nays Campaign Manager, an AI assistant responsible for managing customer campaigns and investigating campaign-related issues.
+You are Health Passport, an on-device medical document scanner AI. You analyze photos of medical documents (lab reports, prescriptions, receipts, X-rays) and extract structured health data.
 
-When a customer inquiry comes in, you need to:
-1. Analyze the customer's request to understand their campaign needs
-2. Check if it's related to campaign limits or issues
-3. Use the campaign_investigation function when needed to check campaign status
-4. Provide appropriate responses based on the investigation results
+When a user sends you an image of a medical document, you must:
+1. Identify the document type (lab_report, prescription, receipt, xray, other)
+2. Extract key findings in a structured format
+3. List any medications with dosage and frequency
+4. Identify action items (follow-up appointments, refills, tests)
 
-Your responsibilities include:
-- Investigating campaign performance and limits
-- Determining if customers have reached their campaign limits
-- Providing helpful messages when limits are reached
-- Directing customers to support when limits haven't been reached
-- Ensuring smooth campaign operations for all customers
+Output format:
+## Document Type: [type]
+## Date: [date if visible]
+## Facility: [facility name if visible]
 
-When you receive a query about campaigns, you should:
-1. First understand what the customer is asking about
-2. If it's campaign-related, use the campaign_investigation tool to check the status
-3. Based on the tool's response, provide appropriate guidance
+### Findings
+| Test | Result | Reference Range | Status |
+|------|--------|-----------------|--------|
+[extracted findings]
 
-Always be professional, helpful, and focused on resolving campaign-related issues efficiently.
+### Medications
+- [Drug name] - [Dosage] - [Frequency] - [Purpose]
 
-Note: You must use the campaign_investigation function whenever a customer asks about campaign limits, issues, or status.
+### Action Items
+- [ ] [Next steps identified from the document]
+
+### Notes
+[Any additional observations]
+
+IMPORTANT: All processing happens on-device. No data is sent to any server. This ensures complete medical data privacy and HIPAA compliance.
 """
-        // It works better with Chinese prompt words.
-        val sysPrompt2 = "Must reply in markdown format"
-//        addSystemPrompt(sysPrompt2)
+        // Medical extraction prompt for VLM and LLM modes
+        val sysPrompt2 = "You are Health Passport, a medical document scanner. Extract structured health data from images. Output in markdown with tables for findings and lists for medications and action items. Be thorough and precise."
+        addSystemPrompt(sysPrompt2)
     }
 
     /**
@@ -689,22 +694,22 @@ Note: You must use the campaign_investigation function whenever a customer asks 
             modelScope.launch {
                 val selectModelData = modelList.first { it.id == selectModelId }
                 val unsafeClient = getUnsafeOkHttpClient().build()
-                
+
                 // Track URL mapping for fallback: primary URL -> fallback URL
                 val fallbackUrlMap = mutableMapOf<String, String>()
                 // Track failed downloads for fallback retry
                 val failedDownloads = mutableListOf<DownloadableFileWithFallback>()
 
                 // For NPU models without explicit files list, fetch file list with fallback support
-                val filesToDownloadWithFallback: List<DownloadableFileWithFallback> = if (selectModelData.isNpuModel() && 
-                    selectModelData.files.isNullOrEmpty() && 
+                val filesToDownloadWithFallback: List<DownloadableFileWithFallback> = if (selectModelData.isNpuModel() &&
+                    selectModelData.files.isNullOrEmpty() &&
                     !selectModelData.baseUrl.isNullOrEmpty()) {
-                    
+
                     Log.d(TAG, "NPU model detected, fetching file list: ${selectModelData.baseUrl}")
-                    
+
                     // Fetch file list with fallback support
                     val result = ModelFileListingUtil.listFilesWithFallback(selectModelData.baseUrl!!, unsafeClient)
-                    
+
                     if (result.files.isEmpty()) {
                         Log.e(TAG, "Failed to fetch file list for ${selectModelData.id}")
                         runOnUiThread {
@@ -714,10 +719,10 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }
                         return@launch
                     }
-                    
+
                     val useHfUrls = result.source == ModelFileListingUtil.FileListResult.Source.HUGGINGFACE
                     Log.d(TAG, "Found ${result.files.size} files from ${result.source}: ${result.files}")
-                    
+
                     selectModelData.downloadableFilesWithFallback(
                         selectModelData.modelDir(this@MainActivity),
                         result.files,
@@ -727,17 +732,17 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     // For non-NPU models or models with explicit files, use the original method with fallback
                     selectModelData.downloadableFiles(selectModelData.modelDir(this@MainActivity)).withFallbackUrls()
                 }
-                
+
                 // Build fallback URL map
-                filesToDownloadWithFallback.forEach { 
+                filesToDownloadWithFallback.forEach {
                     fallbackUrlMap[it.primaryUrl] = it.fallbackUrl
                 }
-                
+
                 // Convert to simple DownloadableFile for initial download attempt
-                val filesToDownload = filesToDownloadWithFallback.map { 
+                val filesToDownload = filesToDownloadWithFallback.map {
                     DownloadableFile(it.file, it.primaryUrl)
                 }
-                
+
                 Log.d(TAG, "filesToDownload: $filesToDownload")
                 if (filesToDownload.isEmpty()) throw IllegalArgumentException("No download URL")
 
@@ -778,7 +783,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         return 0L
                     }
                 }
-                
+
                 // Try to get file sizes, with fallback to HF if S3 fails
                 val fileSizeMap = mutableMapOf<String, Long>()
                 filesToDownloadWithFallback.forEach { fileWithFallback ->
@@ -789,7 +794,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                     }
                     fileSizeMap[fileWithFallback.primaryUrl] = size
                 }
-                
+
                 val totalSizes = filesToDownload.map { fileSizeMap[it.url] ?: 0L }
                 if (totalSizes.any { it == 0L }) {
                     runOnUiThread {
@@ -807,7 +812,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                 val startTime = System.currentTimeMillis()
                 var lastProgressTime = 0L
                 val progressInterval = 500L
-                
+
                 fun onProgress(
                     modelId: String,
                     percent: Int,
@@ -847,7 +852,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         lastProgressTime = now
                     }
                 }
-                
+
                 // Function to start download for a list of files
                 fun startDownload(
                     downloadFiles: List<DownloadableFile>,
@@ -868,12 +873,12 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }
                         return
                     }
-                    
+
                     val queueSet = DownloadContext.QueueSet()
                         .setParentPathFile(downloadFiles[0].file.parentFile)
                         .setMinIntervalMillisCallbackProcess(300)
                     val builder = queueSet.commit()
-                    
+
                     downloadFiles.forEach { item ->
                         val taskBuilder = DownloadTask.Builder(item.url, item.file)
                         getHfToken(selectModelData, item.url)?.let {
@@ -885,7 +890,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }
                         builder.bindSetTask(task)
                     }
-                    
+
                     val totalCount = filesToDownload.size
                     var currentCount = filesToDownload.size - downloadFiles.size
                     val pendingFallbacks = mutableListOf<DownloadableFile>()
@@ -912,7 +917,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                     Log.d(TAG, "download task ${task.id} end")
                                     currentCount += 1
                                     Log.d(TAG, "download task process currentCount:$currentCount, totalCount:$totalCount")
-                                    
+
                                     if (currentCount >= totalCount) {
                                         downloadState = DownloadState.IDLE
                                         reportProgress(force = true)
@@ -922,7 +927,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
 
                                 else -> {
                                     Log.e(TAG, "download task ${task.id} error: $cause, ${exception?.message}")
-                                    
+
                                     // Try fallback URL if available and not already a fallback attempt
                                     if (!isFallbackAttempt) {
                                         val fallbackUrl = fallbackUrlMap[task.url]
@@ -936,14 +941,14 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                                             }
                                         }
                                     } else {
-                                        val failedFile = filesToDownloadWithFallback.find { 
-                                            it.primaryUrl == task.url || it.fallbackUrl == task.url 
+                                        val failedFile = filesToDownloadWithFallback.find {
+                                            it.primaryUrl == task.url || it.fallbackUrl == task.url
                                         }
                                         if (failedFile != null) {
                                             failedDownloads.add(failedFile)
                                         }
                                     }
-                                    
+
                                     currentCount += 1
                                     if (currentCount >= totalCount && pendingFallbacks.isEmpty()) {
                                         if (failedDownloads.isEmpty()) {
@@ -969,7 +974,7 @@ Note: You must use the campaign_investigation function whenever a customer asks 
                         }, true
                     )
                 }
-                
+
                 // Start initial download with primary URLs
                 startDownload(filesToDownload)
             }

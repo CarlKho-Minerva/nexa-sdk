@@ -15,6 +15,32 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
+        <!-- Health Passport Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#10B981"
+            android:padding="12dp"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="\ud83c\udfe5 Health Passport"
+                android:textColor="@color/white"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="\ud83d\udd12 On-Device Medical Document Scanner · Powered by Nexa AI"
+                android:textColor="#E0F2E9"
+                android:textSize="11sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
         <!-- Spinner for model selection -->
         <FrameLayout
             android:layout_width="match_parent"
@@ -156,9 +182,9 @@
                         android:layout_marginTop="6dp"
                         android:layout_marginBottom="6dp"
                         android:background="@null"
-                        android:hint="Type prompt..."
+                        android:hint="📷 Take a photo or type: 'Extract medical data from this document'"
                         android:padding="6dp"
-                        android:text="hi"
+                        android:text="Extract all medical data from this document. List findings, medications, and next steps."
                         android:textColorHint="#ADADAD" />
 
                     <LinearLayout
