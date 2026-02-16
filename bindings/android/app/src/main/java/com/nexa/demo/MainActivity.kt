@@ -221,6 +221,7 @@ class MainActivity : FragmentActivity() {
         initHealthVault()
         initView()
         setListeners()
+        checkFirstLaunch()
     }
 
     private fun resetLoadState() {
@@ -500,6 +501,41 @@ class MainActivity : FragmentActivity() {
     }
 
     /**
+     * Check if first launch and show intro message
+     */
+    private fun checkFirstLaunch() {
+        val prefs = getSharedPreferences("health_passport", MODE_PRIVATE)
+        val isFirstLaunch = prefs.getBoolean("first_launch", true)
+
+        if (isFirstLaunch) {
+            // Mark as not first launch
+            prefs.edit().putBoolean("first_launch", false).apply()
+
+            // Show intro message after a brief delay
+            Thread {
+                Thread.sleep(800)
+                val intro = """## Welcome to Health Passport
+
+Your medical records deserve privacy. This app runs AI inference entirely on-device using the Qualcomm Hexagon NPU — no data leaves your phone.
+
+**What you can do:**
+
+**Scan Documents** — Tap the scan area to capture prescriptions, lab reports, or medical receipts. The on-device VLM extracts data and organizes it into your Health Vault.
+
+**Browse Your Vault** — Tap "Health Vault" to explore your records by body system, timeline, or protocol. Everything is structured markdown, locally stored.
+
+**Ask Questions** — Type queries like "What's my current eye prescription?" or "List my active medications." The app searches your vault and responds conversationally.
+
+**Privacy by Design** — No server, no cloud, no breach surface. All processing happens on your device via NexaSDK.
+
+Try asking: "What's in my vault?" or tap the scan area to start."""
+
+                streamResponseToChat(intro)
+            }.start()
+        }
+    }
+
+    /**
      * Mock scan flow: simulates document processing with progress
      * Shows the EO medical certificate being "organized" into the vault
      */
@@ -529,38 +565,36 @@ class MainActivity : FragmentActivity() {
                 llDownloading.visibility = View.GONE
                 mockScanInProgress = false
 
-                val scanResult = """## Document Type: Medical Certificate (Rx)
-## Date: January 5, 2026
-## Facility: Executive Optical, Gaisano Grand Mactan
+                val scanResult = """## Document Type: Medical Certificate (Vision Rx)
+## Date: February 16, 2026
+## Facility: Vision Center, Medical Plaza
 
 ### Findings
 | Test | Result | Reference | Status |
 |------|--------|-----------|--------|
-| OD SPH | -1.00 | — | Myopia |
-| OD CYL | -0.25 | — | Astigmatism |
-| OD AXIS | 80 | — | — |
-| OS SPH | -0.75 | — | Myopia |
+| OD SPH | -1.25 | — | Myopia |
+| OD CYL | -0.50 | — | Astigmatism |
+| OD AXIS | 90 | — | — |
+| OS SPH | -1.00 | — | Myopia |
 | OS CYL | -0.75 | — | Astigmatism |
-| OS AXIS | 180 | — | — |
+| OS AXIS | 85 | — | — |
 
 ### Diagnosis
 - **Myopic Astigmatism** — Confirmed
 
 ### Medications
-- Rx Corrective Glasses — Wear daily as prescribed
+- Rx Corrective Glasses — Wear daily for distance
 
 ### Action Items
 - Filed to `01_Body_Systems/01_Head_Eyes_ENT.md`
-- Timeline updated (Jan 05 entry)
-- Archived to `99_Archives/2026-01-05_EO_Visit/`
-- Follow-up: Check-up date 1/5/26
+- Timeline updated (Feb 16 entry)
+- Archived to `99_Archives/2026-02-16_Vision_Exam/`
+- Follow-up: Annual check recommended
 
 ### Notes
-Doctor: Josephine Y. Vicente, O.D. (Lic. 0010603)
+Doctor: Sarah Chen, O.D. (Lic. 0024891)
 
-Invoice: PHP 1,782.14 (Visa ****8148, Maya POS)
-
-*Processed on-device in 5.1s · No data sent to cloud*"""
+*Processed on-device in 4.8s · No cloud transmission*"""
 
                 streamResponseToChat(scanResult)
             }
@@ -626,27 +660,22 @@ Invoice: PHP 1,782.14 (Visa ****8148, Maya POS)
 
             val response = """## Eye Health Summary
 
-**Active Condition:** Myopic Astigmatism (Confirmed Jan 5, 2026)
+**Active Condition:** Myopic Astigmatism (Confirmed Feb 16, 2026)
 
-**Current Prescription** (Dr. Josephine Vicente, EO Mactan):
+**Current Prescription** (Dr. Sarah Chen, Vision Center):
 | Eye | SPH | CYL | AXIS |
 |-----|------|------|------|
-| OD (Right) | -1.00 | -0.25 | 80 |
-| OS (Left) | -0.75 | -0.75 | 180 |
+| OD (Right) | -1.25 | -0.50 | 90 |
+| OS (Left) | -1.00 | -0.75 | 85 |
 
-**Recommendation:** Wear Rx glasses as prescribed.
+**Recommendation:** Corrective lenses for distance.
 
-**Vision Acuity (Dec 2025):** R: 0.7 / L: 0.6 (corrected)
-**IOP:** R: 16 / L: 14 — Normal
-
-**Recent Concern:** Accommodation Insufficiency (Feb 12, 2026)
-- Near vision blurry despite glasses
-- Likely post-viral paresis (after sinusitis)
-- Action: Rule of 20-20-20, monitor 2 weeks
+**Vision Acuity (Feb 2026):** R: 20/25 / L: 20/30 (corrected)
+**IOP:** R: 15 / L: 14 — Normal (Ref: 10-21)
 
 **Rx History:**
-- Dec 2025: OD pl/-0.75x80, OS -0.25/-0.50x105
-- Jan 2026: OD -1.00/-0.25x80, OS -0.75/-0.75x180
+- Jan 2025: OD -1.00/-0.25x95, OS -0.75/-0.50x80
+- Feb 2026: OD -1.25/-0.50x90, OS -1.00/-0.75x85
 
 *Source: 01_Body_Systems/01_Head_Eyes_ENT.md · on-device*"""
             streamResponseToChat(response)
@@ -659,19 +688,15 @@ Invoice: PHP 1,782.14 (Visa ****8148, Maya POS)
 
             val response = """## Active Medications
 
-**Sinusitis / LPRD Protocol (Jan 2026):**
-- **Flomist-FT** — Nasal Spray (R. Maxillary Sinusitis)
-- **Clomont BL** — Sinusitis
-- **Nexpro 40** — PPI (LPRD)
+**Daily (Feb 2026):**
+- **Omega-3 Supplement** — 1 softgel with food
 
-**Daily:**
-- **Fish Oil (Omega-3)** — 2 softgels with food
+**Eye Care:**
+- **Artificial Tears** — As needed (dry eye relief)
 
 **PRN (As Needed):**
-- **Arcoxia 60mg** — TMJ Pain
-- **Fluimucil 600mg** — Mucolytic
-
-**Completed:** Augpen (Antibiotic) — Jan 20, 2026
+- **Acetaminophen 500mg** — Headaches
+- **Antihistamine** — Seasonal allergies
 
 *Source: 03_Protocols/Active_Medications.md · on-device*"""
             streamResponseToChat(response)
@@ -685,15 +710,14 @@ Invoice: PHP 1,782.14 (Visa ****8148, Maya POS)
             val response = """## Recent Medical Timeline
 
 **2026:**
-- **Feb 12** — Accommodation Insufficiency, near vision blurry
-- **Jan 20** — ENT Visit (AIG), Sinusitis + LPRD confirmed
-- **Jan 15** — X-Ray PNS, Normal, Sinuses Clear
-- **Jan 07** — TMJ Pain, Rx: Arcoxia 60mg
-- **Jan 05** — EO Mactan, Myopic Astigmatism, Rx glasses
+- **Feb 16** — Vision exam, myopic astigmatism confirmed, corrective lenses prescribed
+- **Feb 10** — Annual physical, labs ordered, awaiting results
+- **Jan 15** — Dental cleaning, no issues noted
 
 **2025:**
-- **Dec 01** — TAH Health Exam, Full baseline (CBC, BMI, Vision)
-- **Aug 26** — Taiwan Health Check, Chest X-Ray Clear
+- **Dec 20** — Vision check, noted gradual prescription change
+- **Nov 05** — General checkup, BP/BMI baseline recorded
+- **Aug 12** — Annual wellness visit
 
 *Source: 02_Timeline/Medical_Timeline.md · on-device*"""
             streamResponseToChat(response)
@@ -2302,8 +2326,8 @@ space ::= | " " | "\n" | "\r" | "\t"
         // Header
         val header = TextView(this).apply {
             text = title
-            setTextColor(Color.parseColor("#808080"))
-            textSize = 11f
+            setTextColor(Color.parseColor("#4D4D4D"))
+            textSize = 10f
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
             letterSpacing = 0.08f
             isAllCaps = true
@@ -2367,7 +2391,7 @@ space ::= | " " | "\n" | "\r" | "\t"
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, 1
                 ).also { it.setMargins(dp(20), 0, dp(20), 0) }
-                setBackgroundColor(Color.parseColor("#1A1A1A"))
+                setBackgroundColor(Color.parseColor("#0F0F0F"))
             }
             container.addView(sep)
         }
@@ -2397,8 +2421,8 @@ space ::= | " " | "\n" | "\r" | "\t"
         // File name header
         val header = TextView(this).apply {
             text = fileName.removeSuffix(".md").removeSuffix(".txt")
-            setTextColor(Color.parseColor("#808080"))
-            textSize = 11f
+            setTextColor(Color.parseColor("#4D4D4D"))
+            textSize = 10f
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
             letterSpacing = 0.08f
             isAllCaps = true
@@ -2739,41 +2763,75 @@ space ::= | " " | "\n" | "\r" | "\t"
 
     private var popupWindow: PopupWindow? = null
     private fun showPopupMenu(anchorView: View) {
-        if (popupWindow?.isShowing == true) {
-            popupWindow?.dismiss()
-            return
+        val sheet = BottomSheetDialog(this, R.style.DarkBottomSheetDialog)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#0D0D0D"))
+            setPadding(dp(20), dp(20), dp(20), dp(24))
         }
 
-        val popupView = LayoutInflater.from(this).inflate(R.layout.menu_layout, null)
-
-        popupWindow = PopupWindow(
-            popupView,
-            anchorView.width * 2,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            true
-        )
-
-        popupWindow?.isOutsideTouchable = true
-        popupWindow?.elevation = 10f
-
-        val btnCamera = popupView.findViewById<Button>(R.id.btn_camera)
-        val btnPhoto = popupView.findViewById<Button>(R.id.btn_photo)
-
-        btnCamera.setOnClickListener {
-            popupWindow?.dismiss()
-            checkAndOpenCamera()
+        // Header
+        val header = TextView(this).apply {
+            text = "Add Document"
+            setTextColor(Color.parseColor("#4D4D4D"))
+            textSize = 10f
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            letterSpacing = 0.08f
+            isAllCaps = true
+            setPadding(0, 0, 0, dp(16))
         }
-        btnPhoto.setOnClickListener {
-            popupWindow?.dismiss()
-            openGallery()
-        }
+        container.addView(header)
 
-        popupView.measure(
-            View.MeasureSpec.UNSPECIFIED,
-            View.MeasureSpec.UNSPECIFIED
-        )
-        val popupHeight = popupView.measuredHeight
-        popupWindow?.showAsDropDown(anchorView, 0, -anchorView.height - popupHeight)
+        // Camera button
+        val btnCamera = TextView(this).apply {
+            text = "Take Photo"
+            setTextColor(Color.parseColor("#F2F2F2"))
+            textSize = 15f
+            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+            setPadding(0, dp(14), 0, dp(14))
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            isClickable = true
+            isFocusable = true
+            setBackgroundColor(Color.TRANSPARENT)
+            setOnClickListener {
+                sheet.dismiss()
+                checkAndOpenCamera()
+            }
+        }
+        container.addView(btnCamera)
+
+        // Separator
+        val sep1 = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
+            setBackgroundColor(Color.parseColor("#0F0F0F"))
+        }
+        container.addView(sep1)
+
+        // Gallery button
+        val btnGallery = TextView(this).apply {
+            text = "Choose from Photos"
+            setTextColor(Color.parseColor("#F2F2F2"))
+            textSize = 15f
+            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+            setPadding(0, dp(14), 0, dp(14))
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            isClickable = true
+            isFocusable = true
+            setBackgroundColor(Color.TRANSPARENT)
+            setOnClickListener {
+                sheet.dismiss()
+                openGallery()
+            }
+        }
+        container.addView(btnGallery)
+
+        sheet.setContentView(container)
+        sheet.window?.navigationBarColor = Color.parseColor("#0D0D0D")
+        sheet.setOnShowListener {
+            val bottomSheet = sheet.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            bottomSheet?.setBackgroundColor(Color.parseColor("#0D0D0D"))
+        }
+        sheet.show()
     }
 
     private var photoUri: Uri? = null

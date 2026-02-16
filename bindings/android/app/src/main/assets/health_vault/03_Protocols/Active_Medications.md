@@ -1,18 +1,16 @@
 # Active Medications
 
-## Daily Routine (Jan 2026)
+## Daily Routine (Feb 2026)
 
 ### With Food
-- **Fish Oil (ATC Omega-3):** 2 Softgels — Fatty Liver support
+- **Omega-3 Supplement:** 1 Softgel — General health support
 
-### Sinusitis/LPRD Protocol
-- **Flomist-FT:** Nasal Spray — R. Maxillary Sinusitis
-- **Clomont BL:** — Sinusitis
+### Eye Care
 - **Nexpro 40:** PPI — LPRD
 
-### PRN (As Needed)
-- **Arcoxia 60mg:** For TMJ Pain
+- **Flomist-FT:** Nasal Spray — R. Maxillary Sinusitis
+- **Acetaminophen 500mg:** For headaches
+- **Antihistamine:** Seasonal allergies
 - **Fluimucil 600mg:** Mucolytic — Phlegm
-
-### Completed Courses
-- **Augpen (Antibiotic):** Completed Jan 20, 2026
+- **Arcoxia 60mg:** For TMJ Pain
+- **None recently**
