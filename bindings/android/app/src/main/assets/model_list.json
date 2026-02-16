@@ -1,31 +1,16 @@
 [
   {
-    "id": "OmniNeural-4B",
-    "displayName": "\ud83c\udfe5 OmniNeural-4B (Medical VLM)",
-    "modelName": "files-1-1.nexa",
+    "id": "Llama-3.2-1B-Instruct-GGUF",
+    "displayName": "Llama-3.2-1B (Fast)",
+    "modelName": "Llama-3.2-1B-Instruct-Q4_0.gguf",
+    "type": "chat",
     "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/OmniNeural-4B-mobile/",
-    "modelUrl": "files-1-1.nexa"
-  },
-  {
-    "id": "paddleocr-npu",
-    "displayName": "\ud83d\udcdd PaddleOCR (Document Scanner)",
-    "modelName": "weights-1-1.nexa",
-    "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/paddleocr-npu-mobile/",
-    "modelUrl": "weights-1-1.nexa"
-  },
-  {
-    "id": "Qwen3-4B-Instruct-2507-npu",
-    "displayName": "\ud83e\udde0 Qwen3-4B (Medical LLM)",
-    "modelName": "files-1-1.nexa",
-    "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Qwen3-4B-Instruct-2507-npu-mobile/",
-    "modelUrl": "files-1-1.nexa"
+    "pluginIds": 17,
+    "modelUrl": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_0.gguf"
   },
   {
     "id": "Qwen3-4B-GGUF",
-    "displayName": "\ud83e\udde0 Qwen3-4B-GGUF (CPU/GPU)",
+    "displayName": "Qwen3-4B",
     "modelName": "Qwen3-4B-Q4_0.gguf",
     "type": "chat",
     "versionCode": 1,
@@ -33,11 +18,12 @@
     "modelUrl": "https://huggingface.co/unsloth/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_0.gguf"
   },
   {
-    "id": "Granite-4-Micro-NPU",
-    "displayName": "Granite-4.0-Micro 3B (Backup)",
-    "modelName": "files-1-2.nexa",
+    "id": "Llama-3.2-3B-Instruct-GGUF",
+    "displayName": "Llama-3.2-3B",
+    "modelName": "Llama-3.2-3B-Instruct-Q4_0.gguf",
+    "type": "chat",
     "versionCode": 1,
-    "baseUrl": "https://nexa-model-hub-bucket.s3.us-west-1.amazonaws.com/public/nexa_sdk/huggingface-models/Granite-4-Micro-NPU-mobile/",
-    "modelUrl": "files-1-2.nexa"
+    "pluginIds": 17,
+    "modelUrl": "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_0.gguf"
   }
 ]

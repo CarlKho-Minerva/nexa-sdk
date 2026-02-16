@@ -11,7 +11,7 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="40dp"
-        android:background="@color/white"
+        android:background="@color/bg_surface"
         android:orientation="horizontal">
 
         <ImageView
@@ -31,15 +31,15 @@
             android:gravity="center"
             android:text="Select Folder"
             android:textAllCaps="false"
-            android:textColor="#1f1f1f"
+            android:textColor="@color/text_primary"
             android:textSize="16sp"
-            android:textStyle="bold" />
+            android:fontFamily="sans-serif-medium" />
     </FrameLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#E7E7E7" />
+        android:background="@color/border_subtle" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -50,9 +50,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="16dp"
-            android:letterSpacing="0.02"
-            android:textColor="#1F1F1F"
-            android:textSize="16sp" />
+            android:letterSpacing="-0.01"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif"
+            android:lineSpacingExtra="3dp" />
     </ScrollView>
 
 

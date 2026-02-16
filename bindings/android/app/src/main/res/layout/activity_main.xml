@@ -4,9 +4,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_marginStart="0dp"
-    android:layout_marginEnd="0dp"
-    android:layout_marginBottom="20dp"
     android:background="@color/bg_normal"
     android:fitsSystemWindows="true">
 
@@ -15,269 +12,508 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- Health Passport Header -->
+        <!-- ══════════════════════════════════════════
+             HEADER — pulse-health style
+             ══════════════════════════════════════════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#10B981"
-            android:padding="12dp"
-            android:gravity="center">
+            android:background="@drawable/bg_header_gradient"
+            android:paddingTop="16dp"
+            android:paddingBottom="14dp"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <View
+                    android:id="@+id/status_dot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/bg_status_dot" />
+
+                <TextView
+                    android:id="@+id/tv_header_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Health Passport"
+                    android:textColor="@color/text_primary"
+                    android:textSize="22sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="-0.03" />
+
+                <TextView
+                    android:id="@+id/tv_privacy_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="on-device"
+                    android:textColor="@color/accent_green"
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.05"
+                    android:textAllCaps="true" />
+            </LinearLayout>
 
             <TextView
+                android:id="@+id/tv_model_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="\ud83c\udfe5 Health Passport"
-                android:textColor="@color/white"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="\ud83d\udd12 On-Device Medical Document Scanner · Powered by Nexa AI"
-                android:textColor="#E0F2E9"
-                android:textSize="11sp"
-                android:layout_marginTop="2dp" />
+                android:text="Initializing..."
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif"
+                android:layout_marginTop="4dp"
+                android:layout_marginStart="18dp" />
         </LinearLayout>
 
-        <!-- Spinner for model selection -->
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginBottom="5dp">
+        <!-- ══════════════════════════════════════════
+             HIDDEN CONTROLS — IDs preserved for Kotlin
+             ══════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone">
 
             <Spinner
                 android:id="@+id/sp_model_list"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:paddingLeft="10dp" />
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
             <View
                 android:id="@+id/v_tip"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
                 android:visibility="gone" />
-        </FrameLayout>
-
-
-        <!-- Control buttons section -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
 
             <Button
-                android:id="@+id/btn_download"
-                android:layout_width="wrap_content"
-                android:layout_height="26dp"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/btn_rounded_border"
-                android:text="Download"
-                android:textAllCaps="false"
-                android:textColor="#1F1F1F" />
-
-            <Button
-                android:id="@+id/btn_load_model"
-                android:layout_width="wrap_content"
-                android:layout_height="26dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/btn_rounded_border"
-                android:text="Load"
-                android:textAllCaps="false"
-                android:textColor="#1F1F1F" />
-
-            <Button
-                android:id="@+id/btn_unload_model"
-                android:layout_width="wrap_content"
-                android:layout_height="26dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/btn_rounded_border"
-                android:text="Unload"
-                android:textAllCaps="false"
-                android:textColor="#1F1F1F"
-                android:visibility="gone"
-                tools:visibility="gone" />
-
-            <Button
-                android:id="@+id/btn_stop"
-                android:layout_width="wrap_content"
-                android:layout_height="26dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/btn_rounded_border"
-                android:text="Stop"
-                android:textAllCaps="false"
-                android:textColor="#1F1F1F"
-                android:visibility="gone"
-                tools:visibility="gone" />
-
+                android:id="@+id/btn_test"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
         </LinearLayout>
 
-        <View
+        <!-- ══════════════════════════════════════════
+             ADVANCED MODE CONTROLS — shown on long-press
+             ══════════════════════════════════════════ -->
+        <LinearLayout
+            android:id="@+id/ll_advanced_controls"
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="8dp"
-            android:background="#E7E7E7" />
-
-        <Button
-            android:id="@+id/btn_test"
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="test"
-            android:visibility="gone" />
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:background="@color/bg_surface">
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Model Controls"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="sans-serif-medium"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="6dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_download"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="8dp"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:background="@drawable/btn_rounded_border"
+                    android:text="Download"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btn_load_model"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="8dp"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:background="@drawable/btn_rounded_border"
+                    android:text="Load"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btn_unload_model"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="8dp"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:background="@drawable/btn_rounded_border"
+                    android:text="Unload"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/btn_stop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:background="@drawable/btn_rounded_border"
+                    android:text="Stop"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <Button
+                    android:id="@+id/btn_select_model_file"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:background="@drawable/btn_rounded_border"
+                    android:text="Select Model File"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btn_browse_files"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:background="@drawable/btn_rounded_border"
+                    android:text="Health Vault"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
+                android:background="@color/border_subtle" />
+        </LinearLayout>
+
+        <!-- ══════════════════════════════════════════
+             MAIN CONTENT
+             ══════════════════════════════════════════ -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="0dp"
+            android:layout_weight="1">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical">
 
-                <!-- chat display area -->
+                <!-- ── HERO SCAN CARD ── -->
+                <FrameLayout
+                    android:id="@+id/scan_hero_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="16dp"
+                    android:layout_marginRight="16dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/bg_scan_area">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:paddingTop="28dp"
+                        android:paddingBottom="28dp"
+                        android:paddingLeft="24dp"
+                        android:paddingRight="24dp">
+
+                        <ImageView
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            android:src="@drawable/ic_scan_viewfinder"
+                            android:contentDescription="Scan" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Scan Document"
+                            android:textColor="@color/text_primary"
+                            android:textSize="18sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="-0.02"
+                            android:layout_marginTop="12dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tap to capture a medical record"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp"
+                            android:fontFamily="sans-serif"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+
+                    <!-- btn_add_image = full-card clickable overlay -->
+                    <Button
+                        android:id="@+id/btn_add_image"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:text=""
+                        android:stateListAnimator="@null" />
+                </FrameLayout>
+
+                <!-- ── CAPTURED IMAGES PREVIEW ── -->
+                <HorizontalScrollView
+                    android:id="@+id/scroll_images"
+                    android:layout_width="match_parent"
+                    android:layout_height="90dp"
+                    android:layout_marginLeft="16dp"
+                    android:layout_marginRight="16dp"
+                    android:layout_marginBottom="6dp"
+                    android:overScrollMode="never"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:id="@+id/ll_images_container"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
+
+                <!-- ── QUICK ACTION BAR ── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingLeft="16dp"
+                    android:paddingRight="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp">
+
+                    <Button
+                        android:id="@+id/btn_vault_quick"
+                        android:layout_width="0dp"
+                        android:layout_height="34dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:paddingLeft="12dp"
+                        android:paddingRight="12dp"
+                        android:background="@drawable/btn_rounded_border"
+                        android:text="Health Vault"
+                        android:textAllCaps="false"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp" />
+
+                    <Button
+                        android:id="@+id/btn_settings_quick"
+                        android:layout_width="0dp"
+                        android:layout_height="34dp"
+                        android:layout_weight="1"
+                        android:paddingLeft="12dp"
+                        android:paddingRight="12dp"
+                        android:background="@drawable/btn_rounded_border"
+                        android:text="Settings"
+                        android:textAllCaps="false"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- ── RESULTS AREA ── -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginLeft="20dp"
+                    android:layout_marginRight="20dp"
+                    android:background="@color/border_subtle" />
+
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rv_chat"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:clipToPadding="false"
-                    android:padding="8dp"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
                     android:scrollbars="vertical"
+                    android:background="@color/bg_normal"
                     app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
-                <!-- Input section at bottom -->
+                <!-- ── INPUT BAR ── -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_input_box_background"
                     android:orientation="vertical"
-                    android:paddingLeft="8dp"
-                    android:paddingTop="6dp"
-                    android:paddingRight="8dp">
-
-                    <HorizontalScrollView
-                        android:id="@+id/scroll_images"
-                        android:layout_width="match_parent"
-                        android:layout_height="100dp"
-                        android:layout_margin="6dp"
-                        android:overScrollMode="never"
-                        android:visibility="gone">
-
-                        <LinearLayout
-                            android:id="@+id/ll_images_container"
-                            android:layout_width="wrap_content"
-                            android:layout_height="match_parent"
-                            android:layout_marginLeft="6dp"
-                            android:layout_marginEnd="6dp"
-                            android:orientation="horizontal" />
-                    </HorizontalScrollView>
+                    android:paddingLeft="14dp"
+                    android:paddingTop="8dp"
+                    android:paddingRight="14dp"
+                    android:paddingBottom="10dp">
 
                     <EditText
                         android:id="@+id/et_input"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:layout_marginBottom="6dp"
                         android:background="@null"
-                        android:hint="📷 Take a photo or type: 'Extract medical data from this document'"
-                        android:padding="6dp"
-                        android:text="Extract all medical data from this document. List findings, medications, and next steps."
-                        android:textColorHint="#ADADAD" />
+                        android:hint="Ask about your health records..."
+                        android:padding="8dp"
+                        android:text=""
+                        android:textColor="@color/text_primary"
+                        android:textColorHint="@color/text_tertiary"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif"
+                        android:maxLines="3" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="8dp">
+                        android:gravity="center_vertical"
+                        android:paddingTop="6dp">
 
-                        <LinearLayout
+                        <!-- Voice — hidden by default -->
+                        <Button
+                            android:id="@+id/btn_voice"
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginRight="4dp"
-                            android:layout_weight="1"
-                            android:gravity="start"
-                            android:orientation="horizontal">
+                            android:layout_height="34dp"
+                            android:layout_weight="0"
+                            android:background="@drawable/btn_rounded_border"
+                            android:text="Record"
+                            android:textAllCaps="false"
+                            android:textColor="@color/text_primary"
+                            android:textSize="12sp"
+                            android:visibility="gone" />
 
-                            <Button
-                                android:id="@+id/btn_add_image"
-                                android:layout_width="0dp"
-                                android:layout_height="32dp"
-                                android:layout_marginLeft="4dp"
-                                android:layout_marginRight="4dp"
-                                android:layout_weight="1"
-                                android:background="@drawable/btn_rounded_border"
-                                android:ellipsize="end"
-                                android:singleLine="true"
-                                android:text="Add Image"
-                                android:textAllCaps="false"
-                                android:textColor="#1F1F1F"
-                                android:visibility="invisible" />
-
-                            <Button
-                                android:id="@+id/btn_voice"
-                                android:layout_width="0dp"
-                                android:layout_height="32dp"
-                                android:layout_weight="1"
-                                android:background="@drawable/btn_rounded_border"
-                                android:ellipsize="end"
-                                android:singleLine="true"
-                                android:text="Record"
-                                android:textAllCaps="false"
-                                android:textColor="#1F1F1F"
-                                android:visibility="invisible" />
-                        </LinearLayout>
-
-                        <LinearLayout
+                        <View
                             android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="end"
-                            android:orientation="horizontal">
+                            android:layout_height="0dp"
+                            android:layout_weight="1" />
 
-                            <Button
-                                android:id="@+id/btn_clear_history"
-                                android:layout_width="0dp"
-                                android:layout_height="32dp"
-                                android:layout_marginRight="4dp"
-                                android:layout_weight="1"
-                                android:background="@drawable/btn_rounded_border"
-                                android:ellipsize="end"
-                                android:singleLine="true"
-                                android:text="Clear"
-                                android:textAllCaps="false"
-                                android:textColor="#1F1F1F" />
+                        <Button
+                            android:id="@+id/btn_clear_history"
+                            android:layout_width="wrap_content"
+                            android:layout_height="34dp"
+                            android:layout_marginEnd="8dp"
+                            android:paddingLeft="16dp"
+                            android:paddingRight="16dp"
+                            android:background="@drawable/btn_rounded_border"
+                            android:text="Clear"
+                            android:textAllCaps="false"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
 
-                            <Button
-                                android:id="@+id/btn_send"
-                                android:layout_width="0dp"
-                                android:layout_height="32dp"
-                                android:layout_marginEnd="4dp"
-                                android:layout_weight="1"
-                                android:background="@drawable/btn_rounded_border"
-                                android:ellipsize="end"
-                                android:singleLine="true"
-                                android:text="Send"
-                                android:textAllCaps="false"
-                                android:textColor="#1F1F1F" />
-                        </LinearLayout>
+                        <Button
+                            android:id="@+id/btn_send"
+                            android:layout_width="wrap_content"
+                            android:layout_height="34dp"
+                            android:paddingLeft="20dp"
+                            android:paddingRight="20dp"
+                            android:background="@drawable/btn_send_accent"
+                            android:text="Send"
+                            android:textAllCaps="false"
+                            android:textColor="@color/white"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif-medium" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <!-- ── FOOTER — App Branding ── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="12dp"
+                    android:paddingLeft="20dp"
+                    android:paddingRight="20dp"
+                    android:background="@color/bg_normal">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginBottom="10dp"
+                        android:background="@color/border_subtle" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Health Passport"
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="10sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.08"
+                            android:textAllCaps="true" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Powered by NexaAI × Qualcomm NPU"
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="9sp"
+                            android:fontFamily="sans-serif"
+                            android:letterSpacing="0.02" />
+                    </LinearLayout>
+                </LinearLayout>
+
             </LinearLayout>
         </FrameLayout>
 
     </LinearLayout>
 
-    <!-- audio panel -->
+    <!-- ══════════════════════════════════════════
+         AUDIO PANEL (overlay, hidden by default)
+         ══════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/bottom_panel"
         android:layout_width="match_parent"
         android:layout_height="110dp"
         android:layout_alignParentBottom="true"
-        android:background="#FFFFFF"
+        android:background="@color/bg_surface"
         android:orientation="vertical"
         android:visibility="gone">
 
@@ -286,7 +522,8 @@
             android:layout_height="wrap_content"
             android:layout_margin="10dp"
             android:gravity="center_horizontal"
-            android:text="Recording..." />
+            android:text="Recording..."
+            android:textColor="@color/text_primary" />
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -302,7 +539,8 @@
                 android:background="@drawable/btn_rounded_border"
                 android:text="Cancel"
                 android:textAllCaps="false"
-                android:textColor="#1F1F1F" />
+                android:textColor="@color/text_primary"
+                android:textSize="12sp" />
 
             <View
                 android:id="@+id/view"
@@ -316,14 +554,17 @@
                 android:layout_height="32dp"
                 android:layout_marginRight="16dp"
                 android:layout_weight="1"
-                android:background="@drawable/btn_rounded_border"
+                android:background="@drawable/btn_send_accent"
                 android:text="Done"
                 android:textAllCaps="false"
-                android:textColor="#1F1F1F" />
+                android:textColor="@color/white"
+                android:textSize="12sp" />
         </LinearLayout>
-
     </LinearLayout>
-    <!-- Download progress overlay -->
+
+    <!-- ══════════════════════════════════════════
+         DOWNLOAD PROGRESS OVERLAY
+         ══════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/ll_downloading"
         android:layout_width="match_parent"
@@ -331,20 +572,26 @@
         android:clickable="true"
         android:gravity="center"
         android:orientation="vertical"
+        android:background="@drawable/bg_overlay_dark"
         android:visibility="invisible"
-        tools:visibility="visible">
+        tools:visibility="gone">
 
         <ProgressBar
             android:id="@+id/pb_downloading"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center" />
+            android:layout_gravity="center"
+            android:indeterminateTint="@color/accent_green" />
 
         <TextView
             android:id="@+id/tv_download_progress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="0%" />
+            android:text="Preparing model..."
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:fontFamily="sans-serif"
+            android:layout_marginTop="12dp" />
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -355,31 +602,46 @@
             <Button
                 android:id="@+id/btn_cancel_download"
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
+                android:layout_height="34dp"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
                 android:background="@drawable/btn_rounded_border"
                 android:text="cancel"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/btn_retry_download"
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:layout_marginLeft="20dp"
+                android:layout_height="34dp"
+                android:layout_marginLeft="12dp"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
                 android:background="@drawable/btn_rounded_border"
                 android:text="retry"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/btn_dismiss_download"
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:layout_marginLeft="20dp"
+                android:layout_height="34dp"
+                android:layout_marginLeft="12dp"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
                 android:background="@drawable/btn_rounded_border"
                 android:text="dismiss"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
 
+    <!-- ══════════════════════════════════════════
+         LOADING OVERLAY
+         ══════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/ll_loading"
         android:layout_width="match_parent"
@@ -387,18 +649,24 @@
         android:clickable="true"
         android:gravity="center"
         android:orientation="vertical"
+        android:background="@drawable/bg_overlay_dark"
         android:visibility="invisible"
         tools:visibility="gone">
 
         <ProgressBar
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center" />
+            android:layout_gravity="center"
+            android:indeterminateTint="@color/accent_green" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Loading" />
+            android:text="Loading model..."
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif"
+            android:layout_marginTop="8dp" />
     </LinearLayout>
 
 </RelativeLayout>

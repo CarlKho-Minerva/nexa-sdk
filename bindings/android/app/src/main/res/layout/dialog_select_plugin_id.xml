@@ -4,14 +4,16 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="15dp">
+    android:padding="15dp"
+    android:background="#111111">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="load model config:"
+        android:text="Model configuration"
         android:textSize="16sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:textColor="@color/text_primary" />
 
     <RadioGroup
         android:id="@+id/rg_select_plugin_id"
@@ -25,6 +27,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="CPU"
+            android:textColor="@color/text_primary"
             android:visibility="gone" />
 
         <RadioButton
@@ -33,6 +36,7 @@
             android:layout_height="wrap_content"
             android:layout_marginLeft="10dp"
             android:text="GPU"
+            android:textColor="@color/text_primary"
             android:visibility="gone"
             tools:visibility="visible" />
 
@@ -42,6 +46,7 @@
             android:layout_height="wrap_content"
             android:layout_marginLeft="10dp"
             android:text="NPU"
+            android:textColor="@color/text_primary"
             android:visibility="gone" />
     </RadioGroup>
 
@@ -56,7 +61,8 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="nGpuLayers 1~999 : " />
+            android:text="nGpuLayers 1~999 : "
+            android:textColor="@color/text_secondary" />
 
         <EditText
             android:id="@+id/et_gpu_layers"
@@ -65,7 +71,8 @@
             android:gravity="right"
             android:inputType="number"
             android:maxLength="3"
-            android:text="999" />
+            android:text="999"
+            android:textColor="@color/text_primary" />
     </LinearLayout>
 
 </LinearLayout>

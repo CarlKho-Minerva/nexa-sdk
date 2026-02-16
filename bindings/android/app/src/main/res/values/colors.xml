@@ -1,16 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Health Passport Brand Colors -->
-    <color name="purple_200">#FF81C784</color>
+    <!-- Health Passport — Dark Premium Palette -->
+    <color name="purple_200">#FF10B981</color>
     <color name="purple_500">#FF10B981</color>
     <color name="purple_700">#FF059669</color>
     <color name="teal_200">#FF22D3EE</color>
     <color name="teal_700">#FF0891B2</color>
     <color name="black">#FF070707</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="bg_normal">#F0F9F4</color>
+
+    <!-- Surfaces -->
+    <color name="bg_normal">#FF070707</color>
+    <color name="bg_surface">#FF0D0D0D</color>
+    <color name="bg_card">#FF111111</color>
+    <color name="bg_input">#FF0F0F0F</color>
+    <color name="bg_elevated">#FF141414</color>
+
+    <!-- Text -->
     <color name="font_black">#1F1F1F</color>
+    <color name="text_primary">#F2F2F2</color>
+    <color name="text_secondary">#808080</color>
+    <color name="text_tertiary">#4D4D4D</color>
+
+    <!-- Borders -->
+    <color name="border_subtle">#1A1A1A</color>
+    <color name="border_card">#1F1F1F</color>
+
+    <!-- Brand -->
     <color name="health_green">#FF10B981</color>
     <color name="health_dark">#FF070707</color>
     <color name="health_accent">#FF22D3EE</color>
+    <color name="accent_green">#10B981</color>
+    <color name="accent_green_dim">#0D9668</color>
+
+    <!-- Messages -->
+    <color name="msg_user_bg">#1A1A1A</color>
+    <color name="msg_ai_bg">#0F0F0F</color>
+    <color name="msg_ai_border">#1A1A1A</color>
+
+    <!-- Status bar -->
+    <color name="status_bar">#FF050505</color>
 </resources>

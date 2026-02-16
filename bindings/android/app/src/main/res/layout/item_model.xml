@@ -10,10 +10,11 @@
         android:id="@+id/tv_model_id"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:padding="15dp"
-        android:textSize="14sp"
-        android:letterSpacing="0.01"
-        android:textColor="#1F1F1F"
+        android:padding="14dp"
+        android:textSize="13sp"
+        android:letterSpacing="-0.01"
+        android:fontFamily="sans-serif"
+        android:textColor="@color/text_primary"
         tools:text="test" />
 
 </LinearLayout>

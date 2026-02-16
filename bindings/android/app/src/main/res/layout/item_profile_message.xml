@@ -10,9 +10,10 @@
         android:id="@+id/tv_message"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:letterSpacing="0.02"
+        android:letterSpacing="-0.01"
         android:maxWidth="320dp"
         android:text="Profile data"
-        android:textColor="#888888"
-        android:textSize="12sp" />
+        android:textColor="@color/text_tertiary"
+        android:textSize="12sp"
+        android:fontFamily="sans-serif" />
 </LinearLayout>

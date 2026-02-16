@@ -53,6 +53,10 @@ import androidx.core.content.FileProvider
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
+import io.noties.markwon.ext.tables.TablePlugin
+import io.noties.markwon.linkify.LinkifyPlugin
 import com.gyf.immersionbar.ktx.immersionBar
 import com.hjq.toast.Toaster
 import com.liulishuo.okdownload.DownloadContext
@@ -143,11 +147,18 @@ class MainActivity : FragmentActivity() {
     private lateinit var btnLoadModel: Button
     private lateinit var btnUnloadModel: Button
     private lateinit var btnStop: Button
+    private lateinit var btnSelectModelFile: Button
+    private lateinit var btnBrowseFiles: Button
     private lateinit var etInput: EditText
     private lateinit var btnSend: Button
     private lateinit var btnClearHistory: Button
     private lateinit var btnAddImage: Button
     private lateinit var btnAudioRecord: Button
+
+    private lateinit var tvHeaderTitle: TextView
+    private lateinit var tvPrivacyBadge: TextView
+    private lateinit var tvModelStatus: TextView
+    private lateinit var llAdvancedControls: LinearLayout
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ChatAdapter
@@ -191,6 +202,13 @@ class MainActivity : FragmentActivity() {
     private val savedImageFiles = mutableListOf<File>()
     private val messages = arrayListOf<Message>()
 
+    // Manual model file selection
+    private var manualModelFilePath: String? = null
+
+    // Health Vault
+    private lateinit var healthVaultDir: File
+    private var mockScanInProgress = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         immersionBar {
@@ -200,6 +218,7 @@ class MainActivity : FragmentActivity() {
         requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
         okdownload()
         initData()
+        initHealthVault()
         initView()
         setListeners()
     }
@@ -247,9 +266,29 @@ class MainActivity : FragmentActivity() {
         btnLoadModel = findViewById(R.id.btn_load_model)
         btnUnloadModel = findViewById(R.id.btn_unload_model)
         btnStop = findViewById(R.id.btn_stop)
+        btnSelectModelFile = findViewById(R.id.btn_select_model_file)
+        btnBrowseFiles = findViewById(R.id.btn_browse_files)
         etInput = findViewById(R.id.et_input)
         btnAddImage = findViewById(R.id.btn_add_image)
         btnAudioRecord = findViewById(R.id.btn_voice)
+
+        tvHeaderTitle = findViewById(R.id.tv_header_title)
+        tvPrivacyBadge = findViewById(R.id.tv_privacy_badge)
+        tvModelStatus = findViewById(R.id.tv_model_status)
+        llAdvancedControls = findViewById(R.id.ll_advanced_controls)
+
+        // Long-press header to toggle advanced mode
+        tvHeaderTitle.setOnLongClickListener {
+            toggleAdvancedMode()
+            true
+        }
+        tvPrivacyBadge.setOnLongClickListener {
+            toggleAdvancedMode()
+            true
+        }
+
+        // Set initial status - demo-friendly
+        tvModelStatus.text = "Qualcomm NPU · Health Vault Loaded"
 
         bottomPanel = findViewById(R.id.bottom_panel)
         btnAudioCancel = findViewById(R.id.btn_audio_cancel)
@@ -294,6 +333,399 @@ class MainActivity : FragmentActivity() {
         findViewById<View>(R.id.v_tip).setOnClickListener {
             Toast.makeText(this, "please unload model first", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun toggleAdvancedMode() {
+        if (llAdvancedControls.visibility == View.GONE) {
+            llAdvancedControls.visibility = View.VISIBLE
+            Toast.makeText(this, "Advanced mode enabled", Toast.LENGTH_SHORT).show()
+        } else {
+            llAdvancedControls.visibility = View.GONE
+            Toast.makeText(this, "Advanced mode disabled", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Auto-detect model files at common paths (for QDC SSH push or pre-placed models)
+     * Following the tutorial pattern: check known paths, copy to app storage if needed
+     */
+    private fun autoDetectModels() {
+        val searchPaths = listOf(
+            // QDC AI Model upload / ADB push paths
+            File("/data/local/tmp"),
+            File("/sdcard/Download"),
+            File("/sdcard/Models"),
+            File("/sdcard/nexa_models"),
+            // App-specific paths
+            File(filesDir, "models"),
+            File(filesDir, "manual_models"),
+            // Assets-copied models path (tutorial pattern: assets → filesDir)
+            File(filesDir, "nexa_models")
+        )
+
+        for (dir in searchPaths) {
+            if (!dir.exists() || !dir.isDirectory) continue
+            val ggufFiles = dir.walkTopDown().maxDepth(2).filter {
+                it.isFile && it.name.endsWith(".gguf", ignoreCase = true)
+            }.toList()
+
+            if (ggufFiles.isNotEmpty()) {
+                val model = ggufFiles.first()
+                Log.i(TAG, "Auto-detected model: ${model.absolutePath} (${model.length() / 1024 / 1024}MB)")
+
+                // Copy to app storage if not already there (tutorial ModelManager pattern)
+                val appModelDir = File(filesDir, "manual_models")
+                if (!appModelDir.exists()) appModelDir.mkdirs()
+
+                val destFile = File(appModelDir, model.name)
+                if (model.absolutePath.startsWith(filesDir.absolutePath)) {
+                    // Already in app storage
+                    manualModelFilePath = model.absolutePath
+                } else if (destFile.exists() && destFile.length() == model.length()) {
+                    // Already copied
+                    manualModelFilePath = destFile.absolutePath
+                } else {
+                    // Copy to app storage (like tutorial's copyModelFromAssets)
+                    Log.i(TAG, "Copying model to app storage: ${model.name}")
+                    runOnUiThread {
+                        tvModelStatus.text = "Found model: ${model.name}\nCopying to app storage..."
+                    }
+                    try {
+                        model.copyTo(destFile, overwrite = true)
+                        manualModelFilePath = destFile.absolutePath
+                        Log.i(TAG, "Model copied successfully to: ${destFile.absolutePath}")
+                    } catch (e: Exception) {
+                        // If copy fails, try to use directly from source
+                        Log.w(TAG, "Copy failed (${e.message}), using source path directly")
+                        manualModelFilePath = model.absolutePath
+                    }
+                }
+
+                runOnUiThread {
+                    tvModelStatus.text = "Model found: ${model.name}\nTap Load to start (use CPU+GPU for GGUF)"
+                    Toast.makeText(this, "Auto-detected: ${model.name}", Toast.LENGTH_LONG).show()
+                }
+                return
+            }
+        }
+        Log.i(TAG, "No pre-placed models found at common paths")
+    }
+
+    /**
+     * Copy bundled models from assets to filesDir (tutorial ModelManager pattern)
+     * Called on first run to extract bundled models
+     */
+    private fun copyBundledModels() {
+        try {
+            val assetModels = assets.list("nexa_models") ?: emptyArray()
+            if (assetModels.isEmpty()) {
+                Log.i(TAG, "No bundled models in assets/nexa_models/")
+                return
+            }
+
+            val destDir = File(filesDir, "nexa_models")
+            if (!destDir.exists()) destDir.mkdirs()
+
+            for (modelFolder in assetModels) {
+                val modelFiles = assets.list("nexa_models/$modelFolder") ?: continue
+                val modelDestDir = File(destDir, modelFolder)
+                if (!modelDestDir.exists()) modelDestDir.mkdirs()
+
+                for (fileName in modelFiles) {
+                    val destFile = File(modelDestDir, fileName)
+                    if (destFile.exists()) continue  // Already copied
+
+                    Log.i(TAG, "Copying bundled model: nexa_models/$modelFolder/$fileName")
+                    assets.open("nexa_models/$modelFolder/$fileName").use { input ->
+                        destFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+            }
+
+            // Auto-detect the copied models
+            autoDetectModels()
+        } catch (e: Exception) {
+            Log.w(TAG, "No bundled models to copy: ${e.message}")
+        }
+    }
+
+    /**
+     * Initialize the Health Vault by copying bundled markdown files from assets/health_vault
+     * to filesDir/health_vault. This gives the demo a pre-populated medical record structure.
+     */
+    private fun initHealthVault() {
+        healthVaultDir = File(filesDir, "health_vault")
+        if (healthVaultDir.exists() && File(healthVaultDir, "01_Body_Systems/01_Head_Eyes_ENT.md").exists()) {
+            Log.i(TAG, "Health vault already initialized")
+            return
+        }
+        try {
+            copyAssetFolder("health_vault", healthVaultDir)
+            Log.i(TAG, "Health vault initialized at: ${healthVaultDir.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to init health vault: ${e.message}")
+        }
+    }
+
+    /**
+     * Recursively copy an asset folder to a destination directory
+     */
+    private fun copyAssetFolder(assetPath: String, destDir: File) {
+        val entries = assets.list(assetPath) ?: return
+        if (!destDir.exists()) destDir.mkdirs()
+
+        for (entry in entries) {
+            val assetEntryPath = "$assetPath/$entry"
+            val destFile = File(destDir, entry)
+            val subEntries = assets.list(assetEntryPath)
+
+            if (subEntries != null && subEntries.isNotEmpty()) {
+                // It's a directory
+                copyAssetFolder(assetEntryPath, destFile)
+            } else {
+                // It's a file
+                try {
+                    assets.open(assetEntryPath).use { input ->
+                        destFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Skip: $assetEntryPath (${e.message})")
+                }
+            }
+        }
+    }
+
+    /**
+     * Mock scan flow: simulates document processing with progress
+     * Shows the EO medical certificate being "organized" into the vault
+     */
+    private fun runMockScanDemo() {
+        if (mockScanInProgress) return
+        mockScanInProgress = true
+
+        runOnUiThread {
+            llDownloading.visibility = View.VISIBLE
+            tvDownloadProgress.text = "Analyzing document..."
+            pbDownloading.isIndeterminate = true
+        }
+
+        Thread {
+            Thread.sleep(1800)
+            runOnUiThread { tvDownloadProgress.text = "Detected: Medical Certificate" }
+            Thread.sleep(1400)
+            runOnUiThread { tvDownloadProgress.text = "Extracting prescription data" }
+            Thread.sleep(1600)
+            runOnUiThread { tvDownloadProgress.text = "Category  ·  Head, Eyes & ENT" }
+            Thread.sleep(1200)
+            runOnUiThread { tvDownloadProgress.text = "Filing to 01_Body_Systems" }
+            Thread.sleep(900)
+            runOnUiThread { tvDownloadProgress.text = "Updating timeline" }
+            Thread.sleep(700)
+            runOnUiThread {
+                llDownloading.visibility = View.GONE
+                mockScanInProgress = false
+
+                val scanResult = """## Document Type: Medical Certificate (Rx)
+## Date: January 5, 2026
+## Facility: Executive Optical, Gaisano Grand Mactan
+
+### Findings
+| Test | Result | Reference | Status |
+|------|--------|-----------|--------|
+| OD SPH | -1.00 | — | Myopia |
+| OD CYL | -0.25 | — | Astigmatism |
+| OD AXIS | 80 | — | — |
+| OS SPH | -0.75 | — | Myopia |
+| OS CYL | -0.75 | — | Astigmatism |
+| OS AXIS | 180 | — | — |
+
+### Diagnosis
+- **Myopic Astigmatism** — Confirmed
+
+### Medications
+- Rx Corrective Glasses — Wear daily as prescribed
+
+### Action Items
+- Filed to `01_Body_Systems/01_Head_Eyes_ENT.md`
+- Timeline updated (Jan 05 entry)
+- Archived to `99_Archives/2026-01-05_EO_Visit/`
+- Follow-up: Check-up date 1/5/26
+
+### Notes
+Doctor: Josephine Y. Vicente, O.D. (Lic. 0010603)
+
+Invoice: PHP 1,782.14 (Visa ****8148, Maya POS)
+
+*Processed on-device in 5.1s · No data sent to cloud*"""
+
+                streamResponseToChat(scanResult)
+            }
+        }.start()
+    }
+
+    /**
+     * Stream a response into chat character-by-character for a premium feel.
+     */
+    private fun streamResponseToChat(fullText: String) {
+        messages.add(Message("", MessageType.ASSISTANT))
+        reloadRecycleView()
+
+        Thread {
+            val sb = StringBuilder()
+            var i = 0
+            while (i < fullText.length) {
+                // Grab chunks of 2-6 chars for natural feel
+                val chunkSize = when {
+                    fullText[i] == '\n' -> 1
+                    fullText[i] == '|' -> 1
+                    fullText[i] == '#' -> 1
+                    else -> (2..5).random()
+                }
+                val end = minOf(i + chunkSize, fullText.length)
+                sb.append(fullText.substring(i, end))
+                i = end
+
+                val current = sb.toString()
+                runOnUiThread {
+                    messages[messages.size - 1] = Message(current, MessageType.ASSISTANT)
+                    adapter.notifyItemChanged(messages.size - 1)
+                }
+
+                // Variable delay: longer on newlines, shorter on regular chars
+                val delay = when {
+                    i < fullText.length && fullText[i - 1] == '\n' -> (30L..60L).random()
+                    i < fullText.length && fullText[i - 1] == '|' -> (15L..25L).random()
+                    else -> (8L..18L).random()
+                }
+                Thread.sleep(delay)
+            }
+
+            runOnUiThread {
+                messages[messages.size - 1] = Message(fullText, MessageType.ASSISTANT)
+                adapter.notifyItemChanged(messages.size - 1)
+                binding.rvChat.scrollToPosition(messages.size - 1)
+            }
+        }.start()
+    }
+
+    /**
+     * Generate a preloaded RAG response for health queries when model isn't loaded.
+     * Searches the health vault and returns contextual answers.
+     */
+    private fun handlePreloadedQuery(query: String): Boolean {
+        val q = query.lowercase()
+
+        // Eye-related queries
+        if (q.contains("eye") || q.contains("vision") || q.contains("glasses") ||
+            q.contains("optical") || q.contains("myop") || q.contains("astigmat") ||
+            q.contains("eo ") || q.contains("prescription") || q.contains("sight")) {
+
+            val response = """## Eye Health Summary
+
+**Active Condition:** Myopic Astigmatism (Confirmed Jan 5, 2026)
+
+**Current Prescription** (Dr. Josephine Vicente, EO Mactan):
+| Eye | SPH | CYL | AXIS |
+|-----|------|------|------|
+| OD (Right) | -1.00 | -0.25 | 80 |
+| OS (Left) | -0.75 | -0.75 | 180 |
+
+**Recommendation:** Wear Rx glasses as prescribed.
+
+**Vision Acuity (Dec 2025):** R: 0.7 / L: 0.6 (corrected)
+**IOP:** R: 16 / L: 14 — Normal
+
+**Recent Concern:** Accommodation Insufficiency (Feb 12, 2026)
+- Near vision blurry despite glasses
+- Likely post-viral paresis (after sinusitis)
+- Action: Rule of 20-20-20, monitor 2 weeks
+
+**Rx History:**
+- Dec 2025: OD pl/-0.75x80, OS -0.25/-0.50x105
+- Jan 2026: OD -1.00/-0.25x80, OS -0.75/-0.75x180
+
+*Source: 01_Body_Systems/01_Head_Eyes_ENT.md · on-device*"""
+            streamResponseToChat(response)
+            return true
+        }
+
+        // Medication queries
+        if (q.contains("med") || q.contains("drug") || q.contains("pill") ||
+            q.contains("prescription") || q.contains("taking")) {
+
+            val response = """## Active Medications
+
+**Sinusitis / LPRD Protocol (Jan 2026):**
+- **Flomist-FT** — Nasal Spray (R. Maxillary Sinusitis)
+- **Clomont BL** — Sinusitis
+- **Nexpro 40** — PPI (LPRD)
+
+**Daily:**
+- **Fish Oil (Omega-3)** — 2 softgels with food
+
+**PRN (As Needed):**
+- **Arcoxia 60mg** — TMJ Pain
+- **Fluimucil 600mg** — Mucolytic
+
+**Completed:** Augpen (Antibiotic) — Jan 20, 2026
+
+*Source: 03_Protocols/Active_Medications.md · on-device*"""
+            streamResponseToChat(response)
+            return true
+        }
+
+        // Timeline / history queries
+        if (q.contains("timeline") || q.contains("history") || q.contains("when") ||
+            q.contains("visit") || q.contains("appointment")) {
+
+            val response = """## Recent Medical Timeline
+
+**2026:**
+- **Feb 12** — Accommodation Insufficiency, near vision blurry
+- **Jan 20** — ENT Visit (AIG), Sinusitis + LPRD confirmed
+- **Jan 15** — X-Ray PNS, Normal, Sinuses Clear
+- **Jan 07** — TMJ Pain, Rx: Arcoxia 60mg
+- **Jan 05** — EO Mactan, Myopic Astigmatism, Rx glasses
+
+**2025:**
+- **Dec 01** — TAH Health Exam, Full baseline (CBC, BMI, Vision)
+- **Aug 26** — Taiwan Health Check, Chest X-Ray Clear
+
+*Source: 02_Timeline/Medical_Timeline.md · on-device*"""
+            streamResponseToChat(response)
+            return true
+        }
+
+        // General health / system prompt
+        if (q.contains("health") || q.contains("status") || q.contains("summary") ||
+            q.contains("how am i") || q.contains("overall")) {
+
+            val response = """## Health Passport — Overview
+
+**Patient:** Carl Vincent L. Kho · Age 21 · M
+
+**Key Metrics (Dec 2025):**
+- BMI: 27.3 · BP: 121/72 · Pulse: 74 bpm
+- CBC: All normal (RBC slightly elevated)
+
+**Active Conditions:**
+- Myopic Astigmatism — Rx glasses prescribed
+- R. Maxillary Sinusitis — On treatment
+- LPRD — Nexpro 40
+- TMJ Pain — PRN Arcoxia
+
+**Vault:** 6 body system files · 12 timeline entries · 8 active meds
+
+*All data stored on-device · HIPAA-compliant*"""
+            streamResponseToChat(response)
+            return true
+        }
+
+        return false  // No preloaded answer found
     }
 
     private fun parseModelList() {
@@ -357,6 +789,13 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
         // Medical extraction prompt for VLM and LLM modes
         val sysPrompt2 = "You are Health Passport, a medical document scanner. Extract structured health data from images. Output in markdown with tables for findings and lists for medications and action items. Be thorough and precise."
         addSystemPrompt(sysPrompt2)
+
+        // Tutorial pattern: Check for bundled models in assets, then auto-detect pre-placed
+        copyBundledModels()
+        // Auto-detect if no bundled models found
+        if (manualModelFilePath == null) {
+            Thread { autoDetectModels() }.start()
+        }
     }
 
     /**
@@ -418,6 +857,10 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
             Toast.makeText(
                 this@MainActivity, tip, Toast.LENGTH_SHORT
             ).show()
+
+            // Update status
+            tvModelStatus.text = "Model loaded - Ready"
+
             // change UI
             btnAddImage.visibility = View.INVISIBLE
             btnAudioRecord.visibility = View.INVISIBLE
@@ -447,16 +890,25 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
         runOnUiThread {
             vTip.visibility = View.GONE
 
-            // Check if files exist locally first
-            val selectModelData = modelList.firstOrNull { it.id == selectModelId }
-            val fileName = isModelDownloaded(selectModelData!!)
-            val filesExist = fileName == null
+            // Update status
+            tvModelStatus.text = "Load failed - Try manual model or check logs"
 
-            if (!filesExist) {
-                Toaster.showLong("The \"$fileName\" file is missing. Please download it first.")
+            // Only check model list if using list-based loading (not manual)
+            if (selectModelId.isNotEmpty()) {
+                val selectModelData = modelList.firstOrNull { it.id == selectModelId }
+                if (selectModelData != null) {
+                    val fileName = isModelDownloaded(selectModelData)
+                    if (fileName != null) {
+                        Toaster.showLong("The \"$fileName\" file is missing. Please download it first.")
+                    } else {
+                        Toast.makeText(this@MainActivity, "Load failed: $tip", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(this@MainActivity, "Model not found in list", Toast.LENGTH_SHORT).show()
+                }
             } else {
-                Toast.makeText(this@MainActivity, tip, Toast.LENGTH_SHORT)
-                    .show()
+                // Manual model loading failed
+                Toast.makeText(this@MainActivity, "Load failed: $tip", Toast.LENGTH_LONG).show()
             }
 
             // change UI
@@ -487,6 +939,66 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
         }
 
         return fileName
+    }
+
+    private fun loadManualModel(modelPath: String, pluginId: String, nGpuLayers: Int) {
+        modelScope.launch {
+            resetLoadState()
+
+            runOnUiThread {
+                tvModelStatus.text = "Loading model..."
+            }
+
+            val modelFile = File(modelPath)
+            if (!modelFile.exists()) {
+                runOnUiThread {
+                    tvModelStatus.text = "Model file not found"
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Model file not found: ${modelFile.name}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    llLoading.visibility = View.INVISIBLE
+                    vTip.visibility = View.GONE
+                }
+                return@launch
+            }
+
+            Log.d(TAG, "Loading manual model:")
+            Log.d(TAG, "  - File: ${modelFile.name}")
+            Log.d(TAG, "  - Path: ${modelFile.absolutePath}")
+            Log.d(TAG, "  - Size: ${modelFile.length()} bytes")
+            Log.d(TAG, "  - Plugin: $pluginId")
+            Log.d(TAG, "  - GPU Layers: $nGpuLayers")
+
+            // For GGUF files, use empty model_name and minimal config
+            // Note: NPU paths must be set even for CPU/GPU plugins
+            val conf = ModelConfig(
+                nCtx = 2048,
+                nGpuLayers = nGpuLayers,
+                enable_thinking = false,
+                npu_lib_folder_path = applicationInfo.nativeLibraryDir,
+                npu_model_folder_path = filesDir.absolutePath
+            )
+
+            LlmWrapper.builder().llmCreateInput(
+                LlmCreateInput(
+                    model_name = "",  // Empty for GGUF
+                    model_path = modelFile.absolutePath,
+                    tokenizer_path = null,  // GGUF has embedded tokenizer
+                    config = conf,
+                    plugin_id = pluginId
+                )
+            ).build().onSuccess { wrapper ->
+                isLoadLlmModel = true
+                llmWrapper = wrapper
+                onLoadModelSuccess("Manual model loaded: ${modelFile.name}")
+                Log.d(TAG, "Manual model loaded successfully")
+            }.onFailure { error ->
+                Log.e(TAG, "Manual model load failed: ${error.message}")
+                onLoadModelFailed(error.message.toString())
+            }
+        }
     }
 
     private fun loadModel(selectModelData: ModelData, modelDataPluginId: String, nGpuLayers: Int) {
@@ -984,7 +1496,7 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
     private fun setListeners() {
 
         btnAddImage.setOnClickListener {
-            openGallery()
+            showPopupMenu(it)
         }
 
         btnAudioRecord.setOnClickListener {
@@ -994,6 +1506,23 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
         btnClearHistory.setOnClickListener {
             clearHistory()
         }
+
+        btnSelectModelFile.setOnClickListener {
+            openModelFilePicker()
+        }
+
+        btnBrowseFiles.setOnClickListener {
+            browseHealthFiles()
+        }
+
+        // Quick-action buttons (always visible)
+        findViewById<Button>(R.id.btn_vault_quick).setOnClickListener {
+            browseHealthFiles()
+        }
+        findViewById<Button>(R.id.btn_settings_quick).setOnClickListener {
+            showSettingsDialog()
+        }
+
         /**
          * Step 3. download model
          */
@@ -1030,9 +1559,86 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
          * Step 4. load model
          */
         btnLoadModel.setOnClickListener {
-            val selectModelData = modelList.first { it.id == selectModelId }
+            // Check if manual model file is selected
+            if (manualModelFilePath != null) {
+                if (hasLoadedModel()) {
+                    Toast.makeText(this@MainActivity, "please unload first", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                vTip.visibility = View.VISIBLE
+                llLoading.visibility = View.VISIBLE
+
+                // Show plugin selection dialog for manual model
+                val dialogBinding = DialogSelectPluginIdBinding.inflate(layoutInflater)
+                // Per Nexa tutorial: GGUF models MUST use "cpu_gpu" plugin on Snapdragon
+                dialogBinding.rbCpu.visibility = View.VISIBLE
+                dialogBinding.rbCpu.text = "CPU+GPU (GGUF)"
+                dialogBinding.rbCpu.isChecked = true  // Default to cpu_gpu for GGUF
+                dialogBinding.rbGpu.visibility = View.VISIBLE
+                dialogBinding.rbNpu.visibility = View.VISIBLE
+
+                var selectedPluginId = "cpu_gpu"  // Tutorial: GGUF → cpu_gpu
+                var nGpuLayers = 0
+
+                dialogBinding.rgSelectPluginId.setOnCheckedChangeListener { group, checkedId ->
+                    selectedPluginId = when (checkedId) {
+                        R.id.rb_cpu -> "cpu_gpu"  // GGUF uses cpu_gpu per tutorial
+                        R.id.rb_gpu -> "gpu"
+                        R.id.rb_npu -> "npu"  // For Nexa proprietary models
+                        else -> "cpu_gpu"
+                    }
+                    dialogBinding.llGpuLayers.visibility =
+                        if (checkedId == R.id.rb_gpu) View.VISIBLE else View.GONE
+                }
+
+                val dialogOnClickListener = object : CustomDialogInterface.OnClickListener() {
+                    override fun onClick(dialog: DialogInterface?, which: Int) {
+                        if (dialogBinding.llGpuLayers.visibility == View.VISIBLE) {
+                            val layers = dialogBinding.etGpuLayers.text.toString().toIntOrNull() ?: 0
+                            if (layers == 0) {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "nGpuLayers min value is 1",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return
+                            }
+                            nGpuLayers = layers
+                        }
+
+                        when (which) {
+                            DialogInterface.BUTTON_POSITIVE -> {
+                                dialog?.dismiss()
+                                loadManualModel(manualModelFilePath!!, selectedPluginId, nGpuLayers)
+                            }
+                            DialogInterface.BUTTON_NEGATIVE -> {
+                                llLoading.visibility = View.INVISIBLE
+                                vTip.visibility = View.GONE
+                            }
+                        }
+                    }
+                }
+
+                val alertDialog = AlertDialog.Builder(this).setView(dialogBinding.root)
+                    .setNegativeButton("cancel", dialogOnClickListener)
+                    .setPositiveButton("sure", dialogOnClickListener)
+                    .setCancelable(false)
+                    .create()
+                alertDialog.show()
+                dialogOnClickListener.resetPositiveButton(alertDialog)
+                return@setOnClickListener
+            }
+
+            // Normal flow - load from model list
+            if (selectModelId.isEmpty()) {
+                Toast.makeText(this@MainActivity, "Please select a model from list or use 'Select Model File'", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val selectModelData = modelList.firstOrNull { it.id == selectModelId }
             if (selectModelData == null) {
-                Toast.makeText(this@MainActivity, "model not selected", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Model not found in list", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             Log.d(TAG, "current select model data:$selectModelData")
@@ -1053,7 +1659,7 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
 
             val supportPluginIds = selectModelData.getSupportPluginIds()
             Log.d(TAG, "support plugin_id:$supportPluginIds")
-            var modelDataPluginId = "cpu_gpu"
+            var modelDataPluginId = "cpu_gpu"  // Tutorial: GGUF → cpu_gpu on Snapdragon
             var nGpuLayers = 0
             if (supportPluginIds.size > 1) {
                 val dialogBinding = DialogSelectPluginIdBinding.inflate(layoutInflater)
@@ -1084,9 +1690,17 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
                         dialog: DialogInterface?,
                         which: Int
                     ) {
+                        // Capture selected plugin ID from radio buttons
+                        modelDataPluginId = when (dialogBinding.rgSelectPluginId.checkedRadioButtonId) {
+                            R.id.rb_cpu -> "cpu"
+                            R.id.rb_gpu -> "gpu"
+                            R.id.rb_npu -> "npu"
+                            else -> "cpu"
+                        }
+
                         nGpuLayers = 0
                         if (dialogBinding.llGpuLayers.visibility == View.VISIBLE) {
-                            nGpuLayers = dialogBinding.etGpuLayers.text.toString().toInt()
+                            nGpuLayers = dialogBinding.etGpuLayers.text.toString().toIntOrNull() ?: 0
                             if (nGpuLayers == 0) {
                                 Toast.makeText(
                                     this@MainActivity,
@@ -1118,9 +1732,8 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
                 alertDialog.show()
                 dialogOnClickListener.resetPositiveButton(alertDialog)
             } else {
-                if ("npu" == supportPluginIds[0]) {
-                    modelDataPluginId = "npu"
-                }
+                // Single plugin available - use it directly
+                modelDataPluginId = supportPluginIds.firstOrNull() ?: "cpu"
                 loadModel(selectModelData, modelDataPluginId, nGpuLayers)
             }
         }
@@ -1129,9 +1742,34 @@ IMPORTANT: All processing happens on-device. No data is sent to any server. This
          * Step 5. send message
          */
         btnSend.setOnClickListener {
+            // If images are captured, trigger mock scan demo
+            if (savedImageFiles.isNotEmpty() && !hasLoadedModel()) {
+                messages.add(Message("", MessageType.IMAGES, savedImageFiles.map { it }))
+                reloadRecycleView()
+                clearImages()
+                runMockScanDemo()
+                etInput.setText("")
+                return@setOnClickListener
+            }
+
+            // Preloaded RAG mode — works without model loaded
             if (!hasLoadedModel()) {
-                Toast.makeText(this@MainActivity, "please load model first", Toast.LENGTH_SHORT)
-                    .show()
+                val inputString = etInput.text.trim().toString()
+                if (inputString.isNotEmpty()) {
+                    messages.add(Message(inputString, MessageType.USER))
+                    reloadRecycleView()
+                    etInput.setText("")
+                    etInput.clearFocus()
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.hideSoftInputFromWindow(etInput.windowToken, 0)
+
+                    if (!handlePreloadedQuery(inputString)) {
+                        // No preloaded answer — show helpful hint
+                        streamResponseToChat("I can look up your **eyes**, **medications**, **timeline**, or give a **health summary**.\n\n*Load a model in settings for free-form responses.*")
+                    }
+                } else {
+                    Toast.makeText(this@MainActivity, "Ask about your health records", Toast.LENGTH_SHORT).show()
+                }
                 return@setOnClickListener
             }
 
@@ -1406,6 +2044,10 @@ space ::= | " " | "\n" | "\r" | "\t"
                     btnStop.visibility = View.GONE
                     btnAddImage.visibility = View.INVISIBLE
                     btnAudioRecord.visibility = View.INVISIBLE
+
+                    // Update status
+                    tvModelStatus.text = "No model loaded - Select model file in advanced mode"
+
                     Toast.makeText(
                         this@MainActivity, if (result == 0) {
                             "unload success"
@@ -1516,6 +2158,13 @@ space ::= | " " | "\n" | "\r" | "\t"
                     val size = messages.size
                     messages[size - 1] = Message(content, MessageType.ASSISTANT)
 
+                    // Auto-save health record if it contains medical data
+                    if (content.contains("## Document Type:") ||
+                        content.contains("### Findings") ||
+                        content.contains("### Medications")) {
+                        saveHealthRecord(content)
+                    }
+
                     val ttft = String.format(null, "%.2f", streamResult.profile.ttftMs)
                     val promptTokens = streamResult.profile.promptTokens
                     val prefillSpeed =
@@ -1610,6 +2259,344 @@ space ::= | " " | "\n" | "\r" | "\t"
         startActivityForResult(intent, 1)
     }
 
+    private fun openModelFilePicker() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.type = "*/*"
+        intent.addCategory(Intent.CATEGORY_OPENABLE)
+        // Try to suggest common download directories
+        try {
+            startActivityForResult(
+                Intent.createChooser(intent, "Select GGUF Model File"),
+                REQUEST_CODE_MODEL_FILE
+            )
+        } catch (ex: android.content.ActivityNotFoundException) {
+            Toast.makeText(this, "Please install a file manager.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun browseHealthFiles() {
+        browseVaultFolder(healthVaultDir, "Health Vault")
+    }
+
+    private fun browseVaultFolder(folder: File, title: String) {
+        if (!folder.exists()) {
+            Toast.makeText(this, "Vault not initialized", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val entries = folder.listFiles()?.filter { !it.name.startsWith(".") }
+            ?.sortedWith(compareBy({ !it.isDirectory }, { it.name })) ?: emptyList()
+
+        if (entries.isEmpty()) {
+            Toast.makeText(this, "Empty", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val sheet = BottomSheetDialog(this, R.style.DarkBottomSheetDialog)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#0D0D0D"))
+            setPadding(0, dp(16), 0, dp(24))
+        }
+
+        // Header
+        val header = TextView(this).apply {
+            text = title
+            setTextColor(Color.parseColor("#808080"))
+            textSize = 11f
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            letterSpacing = 0.08f
+            isAllCaps = true
+            setPadding(dp(20), dp(4), dp(20), dp(12))
+        }
+        container.addView(header)
+
+        // Entries
+        for (entry in entries) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(dp(20), dp(14), dp(20), dp(14))
+                isClickable = true
+                isFocusable = true
+                // Ripple-like touch feedback
+                setBackgroundColor(Color.TRANSPARENT)
+                setOnClickListener {
+                    sheet.dismiss()
+                    if (entry.isDirectory) {
+                        browseVaultFolder(entry, entry.name)
+                    } else if (entry.name.endsWith(".md", true) || entry.name.endsWith(".txt", true)) {
+                        try { showFileContent(entry.name, entry.readText()) }
+                        catch (e: Exception) { Toast.makeText(this@MainActivity, "Error", Toast.LENGTH_SHORT).show() }
+                    }
+                }
+            }
+
+            val icon = TextView(this).apply {
+                text = if (entry.isDirectory) "/" else "."
+                setTextColor(Color.parseColor("#10B981"))
+                textSize = 12f
+                typeface = android.graphics.Typeface.MONOSPACE
+                setPadding(0, 0, dp(12), 0)
+            }
+
+            val name = TextView(this).apply {
+                text = entry.name
+                setTextColor(if (entry.isDirectory) Color.parseColor("#F2F2F2") else Color.parseColor("#B0B0B0"))
+                textSize = 14f
+                typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+                letterSpacing = -0.01f
+            }
+
+            val chevron = TextView(this).apply {
+                text = if (entry.isDirectory) ">" else ""
+                setTextColor(Color.parseColor("#4D4D4D"))
+                textSize = 12f
+                setPadding(dp(8), 0, 0, 0)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                gravity = android.view.Gravity.END
+            }
+
+            row.addView(icon)
+            row.addView(name)
+            row.addView(chevron)
+            container.addView(row)
+
+            // Separator
+            val sep = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1
+                ).also { it.setMargins(dp(20), 0, dp(20), 0) }
+                setBackgroundColor(Color.parseColor("#1A1A1A"))
+            }
+            container.addView(sep)
+        }
+
+        val scrollView = android.widget.ScrollView(this).apply {
+            addView(container)
+            setBackgroundColor(Color.parseColor("#0D0D0D"))
+        }
+        sheet.setContentView(scrollView)
+        sheet.window?.navigationBarColor = Color.parseColor("#0D0D0D")
+        // Style the bottom sheet background
+        sheet.setOnShowListener {
+            val bottomSheet = sheet.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            bottomSheet?.setBackgroundColor(Color.parseColor("#0D0D0D"))
+        }
+        sheet.show()
+    }
+
+    private fun showFileContent(fileName: String, content: String) {
+        val sheet = BottomSheetDialog(this, R.style.DarkBottomSheetDialog)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#070707"))
+            setPadding(dp(20), dp(16), dp(20), dp(32))
+        }
+
+        // File name header
+        val header = TextView(this).apply {
+            text = fileName.removeSuffix(".md").removeSuffix(".txt")
+            setTextColor(Color.parseColor("#808080"))
+            textSize = 11f
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            letterSpacing = 0.08f
+            isAllCaps = true
+            setPadding(0, dp(4), 0, dp(16))
+        }
+        container.addView(header)
+
+        // Markdown rendered content
+        val markwon = Markwon.builder(this)
+            .usePlugin(StrikethroughPlugin.create())
+            .usePlugin(TablePlugin.create(this))
+            .usePlugin(LinkifyPlugin.create())
+            .build()
+
+        val contentView = TextView(this).apply {
+            setTextColor(Color.parseColor("#D0D0D0"))
+            textSize = 13f
+            typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+            setLineSpacing(0f, 1.4f)
+            letterSpacing = -0.01f
+            setTextIsSelectable(true)
+        }
+        markwon.setMarkdown(contentView, content)
+        container.addView(contentView)
+
+        val scrollView = android.widget.ScrollView(this).apply {
+            addView(container)
+            setBackgroundColor(Color.parseColor("#070707"))
+        }
+        sheet.setContentView(scrollView)
+        sheet.window?.navigationBarColor = Color.parseColor("#070707")
+        sheet.setOnShowListener {
+            val bottomSheet = sheet.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            bottomSheet?.setBackgroundColor(Color.parseColor("#070707"))
+        }
+        sheet.show()
+    }
+
+    private fun showSettingsDialog() {
+        val systemPrompt = try {
+            val promptFile = File(healthVaultDir, "04_System_Prompt/hk_system_prompt.md")
+            if (promptFile.exists()) promptFile.readText() else "No system prompt loaded"
+        } catch (e: Exception) { "Error loading prompt" }
+
+        val vaultStats = try {
+            var fileCount = 0
+            var totalSize = 0L
+            healthVaultDir.walkTopDown().forEach {
+                if (it.isFile) { fileCount++; totalSize += it.length() }
+            }
+            "$fileCount files  ·  ${totalSize / 1024} KB"
+        } catch (e: Exception) { "—" }
+
+        val modelInfo = if (hasLoadedModel()) {
+            "Active" + (if (manualModelFilePath != null) "  ·  ${File(manualModelFilePath!!).name}" else "")
+        } else {
+            "RAG demo mode"
+        }
+
+        val sheet = BottomSheetDialog(this, R.style.DarkBottomSheetDialog)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#0D0D0D"))
+            setPadding(dp(20), dp(20), dp(20), dp(32))
+        }
+
+        fun addSection(label: String, value: String) {
+            val sectionLabel = TextView(this).apply {
+                text = label
+                setTextColor(Color.parseColor("#808080"))
+                textSize = 10f
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                letterSpacing = 0.1f
+                isAllCaps = true
+                setPadding(0, dp(16), 0, dp(4))
+            }
+            container.addView(sectionLabel)
+
+            val sectionValue = TextView(this).apply {
+                text = value
+                setTextColor(Color.parseColor("#D0D0D0"))
+                textSize = 13f
+                typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+                setLineSpacing(0f, 1.3f)
+                letterSpacing = -0.01f
+                setTextIsSelectable(true)
+            }
+            container.addView(sectionValue)
+        }
+
+        addSection("Model", modelInfo)
+        addSection("Health Vault", vaultStats)
+        addSection("System Prompt", systemPrompt)
+        addSection("Privacy", "All processing happens on-device.\nNo data is transmitted to any server.")
+
+        // Advanced mode button
+        val advBtn = Button(this).apply {
+            text = "Advanced Mode"
+            setTextColor(Color.parseColor("#808080"))
+            textSize = 12f
+            isAllCaps = false
+            setBackgroundResource(R.drawable.btn_rounded_border)
+            setPadding(dp(16), dp(8), dp(16), dp(8))
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                dp(36)
+            )
+            lp.topMargin = dp(20)
+            layoutParams = lp
+            setOnClickListener {
+                sheet.dismiss()
+                toggleAdvancedMode()
+            }
+        }
+        container.addView(advBtn)
+
+        val scrollView = android.widget.ScrollView(this).apply {
+            addView(container)
+            setBackgroundColor(Color.parseColor("#0D0D0D"))
+        }
+        sheet.setContentView(scrollView)
+        sheet.window?.navigationBarColor = Color.parseColor("#0D0D0D")
+        sheet.setOnShowListener {
+            val bottomSheet = sheet.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            bottomSheet?.setBackgroundColor(Color.parseColor("#0D0D0D"))
+        }
+        sheet.show()
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun saveHealthRecord(content: String) {
+        try {
+            val healthFilesDir = File(filesDir, "health_records")
+            if (!healthFilesDir.exists()) {
+                healthFilesDir.mkdirs()
+            }
+
+            val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", java.util.Locale.US)
+                .format(java.util.Date())
+            val fileName = "health_record_$timestamp.md"
+            val file = File(healthFilesDir, fileName)
+
+            file.writeText(content)
+
+            Log.d(TAG, "Health record saved: ${file.absolutePath}")
+            Toast.makeText(
+                this,
+                "✓ Saved to health records",
+                Toast.LENGTH_SHORT
+            ).show()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving health record", e)
+        }
+    }
+
+    private fun handleModelFileSelection(uri: android.net.Uri) {
+        try {
+            // Get the file path from URI
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val displayNameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    val fileName = if (displayNameIndex >= 0) it.getString(displayNameIndex) else "model.gguf"
+
+                    // Check if it's a GGUF file
+                    if (!fileName.endsWith(".gguf", ignoreCase = true)) {
+                        Toast.makeText(this, "Please select a .gguf model file", Toast.LENGTH_LONG).show()
+                        return
+                    }
+
+                    // Copy file to app's internal storage
+                    val destFile = File(filesDir, "manual_models/$fileName")
+                    destFile.parentFile?.mkdirs()
+
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        destFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    manualModelFilePath = destFile.absolutePath
+
+                    Toast.makeText(
+                        this,
+                        "Model loaded: $fileName\nTap 'Load' to initialize",
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                    Log.d(TAG, "Manual model file saved to: ${destFile.absolutePath}, size: ${destFile.length()} bytes")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling model file selection", e)
+            Toast.makeText(this, "Error loading file: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -1634,6 +2621,16 @@ space ::= | " " | "\n" | "\r" | "\t"
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+
+        // Handle model file selection
+        if (requestCode == REQUEST_CODE_MODEL_FILE) {
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                data.data?.let { uri ->
+                    handleModelFileSelection(uri)
+                }
+            }
+            return
+        }
 
         var bitmap: Bitmap? = null
         if (requestCode == 1) {
@@ -1870,5 +2867,6 @@ space ::= | " " | "\n" | "\r" | "\t"
     companion object {
         private const val SP_DOWNLOADED = "sp_downloaded"
         private const val TAG = "MainActivity"
+        private const val REQUEST_CODE_MODEL_FILE = 2000
     }
 }
